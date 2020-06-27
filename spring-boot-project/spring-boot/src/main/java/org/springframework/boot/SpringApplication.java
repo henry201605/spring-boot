@@ -269,8 +269,12 @@ public class SpringApplication {
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		// 加载initializers 和listeners
+		// getSpringFactoriesInstances顾名思义,就是加载某个接口的工厂实例,
+		// 看起来像是我们要找的"ServiceLoader"了
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+		// 找到main方法所在的类
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -296,22 +300,33 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
+		// 用于监测启动时长等等
 		StopWatch stopWatch = new StopWatch();
+		// springboot的上下文
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
+		// 配置headless模式
 		configureHeadlessProperty();
+		// 启动监听器, 可以配置到spring.factories中去
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
+			// 封装参数
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+			// 配置environment
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
 			configureIgnoreBeanInfo(environment);
+			// 打印banner
 			Banner printedBanner = printBanner(environment);
+			// 创建上下文
 			context = createApplicationContext();
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class<?>[] { ConfigurableApplicationContext.class }, context);
+			// 先初始化上下文
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
+			// spring 经典的refresh()过程, 大部分的逻辑都在里面
+			// 这里不再深入, 读者可以自行研读代码或搜索引擎
 			refreshContext(context);
 			afterRefresh(context, applicationArguments);
 			stopWatch.stop();
@@ -415,17 +430,23 @@ public class SpringApplication {
 		return new SpringApplicationRunListeners(logger,
 				getSpringFactoriesInstances(SpringApplicationRunListener.class, types, this, args));
 	}
-
+	/** * 参数type就是要加载的接口的class */
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type) {
 		return getSpringFactoriesInstances(type, new Class<?>[] {});
 	}
 
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
+		// 获取当前线程的classLoader
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
+		// 翻译一下原文注释就是用names来去重
+		// 注意这里, 我们寻找的"ServiceLoader"终于出现了-->就是SpringFactoriesLoader
+		//loadFactoryNames从指定的位置查找特定接口的实现类的全限定名称
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
+		// 根据@Order注解来排一下序
 		AnnotationAwareOrderComparator.sort(instances);
+		// 返回这个接口的所有实现实例
 		return instances;
 	}
 
