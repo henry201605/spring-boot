@@ -300,34 +300,39 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
-		// 用于监测启动时长等等
+		// 用于监测启动时长等等//记录程序运行时间
 		StopWatch stopWatch = new StopWatch();
-		// springboot的上下文
 		stopWatch.start();
+		// ConfigurableApplicationContext Spring 的上下文
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
 		// 配置headless模式
 		configureHeadlessProperty();
-		// 启动监听器, 可以配置到spring.factories中去
+		//从META-INF/spring.factories中获取监听器
+		//1、获取并启动监听器
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
 			// 封装参数
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
 			// 配置environment
+			// 2、构造容器环境
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
+			//处理需要忽略的Bean
 			configureIgnoreBeanInfo(environment);
 			// 打印banner
 			Banner printedBanner = printBanner(environment);
-			// 创建上下文
+			// 3、初始化容器创建上下文
 			context = createApplicationContext();
+			//实例化SpringBootExceptionReporter.class，用来支持报告关于启动的错误
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class<?>[] { ConfigurableApplicationContext.class }, context);
-			// 先初始化上下文
+			//4、刷新容器前的准备阶段、先初始化上下文，将主类解析成BeanDefinition
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
-			// spring 经典的refresh()过程, 大部分的逻辑都在里面
-			// 这里不再深入, 读者可以自行研读代码或搜索引擎
+			//5、刷新容器
+			// spring 经典的refresh()过程, 可参考spring源码
 			refreshContext(context);
+			//刷新容器后的扩展接口
 			afterRefresh(context, applicationArguments);
 			stopWatch.stop();
 			if (this.logStartupInfo) {

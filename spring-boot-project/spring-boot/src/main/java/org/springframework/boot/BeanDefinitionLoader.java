@@ -132,15 +132,19 @@ class BeanDefinitionLoader {
 
 	private int load(Object source) {
 		Assert.notNull(source, "Source must not be null");
+		// 从Class加载
 		if (source instanceof Class<?>) {
 			return load((Class<?>) source);
 		}
+		// 从Resource加载
 		if (source instanceof Resource) {
 			return load((Resource) source);
 		}
+		// 从Package加载
 		if (source instanceof Package) {
 			return load((Package) source);
 		}
+		// 从 CharSequence 加载 ？？？
 		if (source instanceof CharSequence) {
 			return load((CharSequence) source);
 		}
